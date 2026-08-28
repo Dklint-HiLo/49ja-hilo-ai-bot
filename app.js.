@@ -1,0 +1,290 @@
+const STORAGE_KEY = "49ja-hilo-results";
+
+let results = JSON.parse(
+  localStorage.getItem(STORAGE_KEY) || "[]"
+);
+
+
+// Add a new HiLo result
+function addResult() {
+
+  const result = document.getElementById("result").value;
+  const round = document.getElementById("round").value.trim();
+
+  results.unshift({
+    result: result,
+    round: round,
+    time: new Date().toLocaleString()
+  });
+
+  saveResults();
+
+  document.getElementById("round").value = "";
+
+  updateDashboard();
+}
+
+
+// Save results on the phone/browser
+function saveResults() {
+
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(results)
+  );
+
+}
+
+
+// Calculate statistics
+function calculateStats() {
+
+  const total = results.length;
+
+  const hi = results.filter(
+    item => item.result === "Hi"
+  ).length;
+
+  const lo = results.filter(
+    item => item.result === "Lo"
+  ).length;
+
+  return {
+    total,
+    hi,
+    lo
+  };
+
+}
+
+
+// Find the current streak
+function getStreak() {
+
+  if (results.length === 0) {
+    return "—";
+  }
+
+  const first = results[0].result;
+
+  let count = 0;
+
+  for (const item of results) {
+
+    if (item.result !== first) {
+      break;
+    }
+
+    count++;
+  }
+
+  return first + " × " + count;
+}
+
+
+// Update probability display
+function updateProbability(stats) {
+
+  if (stats.total === 0) {
+
+    document.getElementById(
+      "hiProbability"
+    ).textContent = "50%";
+
+    document.getElementById(
+      "loProbability"
+    ).textContent = "50%";
+
+    document.getElementById(
+      "prediction"
+    ).textContent =
+      "Enter some results to begin analysis.";
+
+    return;
+  }
+
+
+  const hiProbability =
+    (stats.hi / stats.total) * 100;
+
+  const loProbability =
+    (stats.lo / stats.total) * 100;
+
+
+  document.getElementById(
+    "hiProbability"
+  ).textContent =
+    hiProbability.toFixed(1) + "%";
+
+
+  document.getElementById(
+    "loProbability"
+  ).textContent =
+    loProbability.toFixed(1) + "%";
+
+
+  let message;
+
+
+  if (hiProbability > loProbability) {
+
+    message =
+      "Historical lean: HI. This is only a statistical estimate.";
+
+  }
+
+  else if (loProbability > hiProbability) {
+
+    message =
+      "Historical lean: LO. This is only a statistical estimate.";
+
+  }
+
+  else {
+
+    message =
+      "HI and LO are currently evenly represented.";
+
+  }
+
+
+  document.getElementById(
+    "prediction"
+  ).textContent = message;
+
+}
+
+
+// Display recent results
+function displayHistory() {
+
+  const history =
+    document.getElementById("history");
+
+
+  if (results.length === 0) {
+
+    history.innerHTML =
+      "<p>No results recorded yet.</p>";
+
+    return;
+  }
+
+
+  history.innerHTML =
+    results.slice(0, 100).map(
+      (item, index) => {
+
+        const className =
+          item.result.toLowerCase();
+
+        return `
+          <div class="result">
+
+            <span>
+              #${results.length - index}
+
+              ${item.round
+                ? " • Round " + escapeHTML(item.round)
+                : ""
+              }
+            </span>
+
+            <span class="${className}">
+              ${item.result}
+            </span>
+
+          </div>
+        `;
+
+      }
+    ).join("");
+
+}
+
+
+// Protect the page from HTML entered in round number
+function escapeHTML(text) {
+
+  return text.replace(
+    /[&<>"']/g,
+    function(character) {
+
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+
+      }[character];
+
+    }
+  );
+
+}
+
+
+// Update the whole dashboard
+function updateDashboard() {
+
+  const stats = calculateStats();
+
+
+  document.getElementById(
+    "total"
+  ).textContent = stats.total;
+
+
+  document.getElementById(
+    "hi"
+  ).textContent = stats.hi;
+
+
+  document.getElementById(
+    "lo"
+  ).textContent = stats.lo;
+
+
+  document.getElementById(
+    "streak"
+  ).textContent = getStreak();
+
+
+  updateProbability(stats);
+
+  displayHistory();
+
+}
+
+
+// Delete all results
+function clearResults() {
+
+  if (results.length === 0) {
+    return;
+  }
+
+
+  const confirmed =
+    confirm(
+      "Are you sure you want to delete all results?"
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  results = [];
+
+  saveResults();
+
+  updateDashboard();
+
+}
+
+
+// Start dashboard
+updateDashboard();
